@@ -1,4 +1,12 @@
-% for dev on mac: comment out when running on windows
+% ------------- this is script runs one session for one subject ---------
+% READ THIS:
+% - look at the sections with !!!! comments
+% - if you need to exit at any point, the exit key will only work when
+% there is no stimulus displayed
+% - reponse key must be pressed when there is no stimulus displayed
+
+%% setup
+% !!!!!!!!!!!!! for dev on mac: comment out when running on windows !!!!!!
 Screen('Preference','ConserveVRAM', 16384); % https://psychtoolbox.discourse.group/t/using-toolbox-with-big-sur-and-m1-macbook/3599
 Screen('Preference', 'SkipSyncTests', 1);
 Screen('Preference','Verbosity', 3);
@@ -8,30 +16,49 @@ sca;
 close all;
 clear;
 
-PsychDefaultSetup(2);
+prompt = 'Please enter subject ID and press enter: ';
+SUBJECT_ID = input(prompt);
+prompt = 'Please enter session # and press enter: ';
+SESS_NUM = input(prompt);
 
-% constants
-ROTATE = true;
+PsychDefaultSetup(2);
+rng('default'); % for random numbers
+
+%% constants
 SCREEN_WIDTH_PIX = 1920; % output of Screen('WindowSize', window)
 SCREEN_HEIGHT_PIX = 1080;  % output of Screen('WindowSize', window)
 PIX_PER_CM = 36.36363;
 CM_PER_PIX = 1/PIX_PER_CM;
 LINE_WIDTH = 4; % for fixation cross
 CROSS_DIM = 20;
+
+% !!!!!!!!! MAY NEED TO CHANGE !!!!!!!!!! --------------------------------
+ADAPT_TIME = 1; % change this to 30 when actually running
+PRES_TIME_SECS = 1; % Presentation Time for stim in seconds 
+
+% these key mappings are for mac, may need to change for windows
+ONE_KEY = 30; % KbName('1'); may work on windows
+TWO_KEY = 31; % KbName('2'); may work on windows
+THREE_KEY = 32; % KbName('3'); may work on windows
+
 RECT_WIDTH = 3 * PIX_PER_CM;
-GAP = .5 * PIX_PER_CM; % gap between color rects\
-RECT_HEIGHT = RECT_WIDTH*3 + GAP*2;
-BASE_RECT = [0 0 RECT_WIDTH RECT_HEIGHT]; 
+GAP = .5 * PIX_PER_CM; % gap between color rects
 
 % deg/frame calculated by: 
 % 45deg/75ms -> 0.6deg/ms -> 600deg/s
 % ifi = 0.0166943440000068s/frame
 % deg per frame = 600deg/s * 0.0166943440000068s/frame
-DEG_PER_FRAME = 10.0166;
+DEG_PER_FRAME = 10.0166; % determines speed
 CROSS_POSX = SCREEN_WIDTH_PIX/2; 
 STIM_POSX = (CROSS_POSX*CM_PER_PIX - 18) * PIX_PER_CM;
-COLORS = [0 177 0; 103 167 0; 0 177 0] / 256;
+% !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! --------------------------
 
+RECT_HEIGHT = RECT_WIDTH*3 + GAP*2;
+BASE_RECT = [0 0 RECT_WIDTH RECT_HEIGHT]; 
+
+
+%% window setup stuff
+% only one screen
 screens = Screen('Screens');
 screenNumber = max(screens);
 
@@ -40,9 +67,7 @@ white = WhiteIndex(screenNumber);
 black = BlackIndex(screenNumber);
 grey = white / 2;
 
-% Open gray background for adaptation
 [window, windowRect] = PsychImaging('OpenWindow', screenNumber, grey);
-KbStrokeWait;
 
 % Get the size of the on screen window
 [screenXpixels, screenYpixels] = Screen('WindowSize', window); 
@@ -53,8 +78,68 @@ Priority(topPriorityLevel);
 
 % Query the frame duration
 ifi = Screen('GetFlipInterval', window);
+% text size
+Screen('TextSize', window, 40);
 
-% DRAW CROSS ------------------------------
+%% MAKE COLOR STIM POOL AND RANDOMIZE -------------------------------------
+load exp_colors % our struct containing experiment color data
+
+base_green = exp_colors.base_green; % looks like [1 0 0]
+base_red = exp_colors.base_red;
+test_green = exp_colors.test_green; % looks like [r1 g1 b1; r2 g2 b2; r3 g3 b3]
+test_red = exp_colors.test_red;
+bases = [repmat(base_green, length(base_green), 1); repmat(base_red, length(base_red), 1)];
+tests = [test_green; test_red];
+NUM_HUE_PAIRS = length(test_green) + length(test_red); % before position permutations
+
+% position permutations
+bases = repmat(bases, 3, 1); % 3 positions
+tests = repmat(tests, 3, 1);
+odd_one_out_loc = [repmat(1, NUM_HUE_PAIRS, 1); repmat(2, NUM_HUE_PAIRS, 1); repmat(3, NUM_HUE_PAIRS, 1)];
+
+% motion
+bases = repmat(bases, 2, 1); % 2 motion conditions: moving and static
+tests = repmat(tests, 2, 1);
+motion = [repmat(1, length(odd_one_out_loc), 1); repmat(2, length(odd_one_out_loc), 1)];
+odd_one_out_loc = repmat(odd_one_out_loc, 2, 1);
+
+% randomize order in the same way (same seed)
+rng(SUBJECT_ID)
+bases_shuff = bases(randperm(length(bases)), :);
+rng(SUBJECT_ID) 
+tests_shuff = tests(randperm(length(tests)), :);
+rng(SUBJECT_ID) 
+odd_one_out_loc_shuff = odd_one_out_loc(randperm(length(odd_one_out_loc)), :);
+rng(SUBJECT_ID) 
+motion_shuff = motion(randperm(length(motion)), :);
+
+% with 5 hue distances per color, length(stim_mtx) = 60
+stim_mtx = zeros(length(bases_shuff), 3, 3); % 3 colors (3 rectangles), 3 color values (rgb)
+for i = 1:length(stim_mtx)
+    odd_one_out = odd_one_out_loc_shuff(i);
+    stim_mtx(i, :, :) = repmat(bases_shuff(i, :), 1, 1, 3);
+    stim_mtx(i, :, odd_one_out) = tests_shuff(i, :);
+end
+
+% save info
+% TODO need to get hue distances (in CIE space, so have to do some
+% conversions) and color (red vs green), but can do this post process also
+data = struct;
+data.motion = motion_shuff;
+data.base_colors = bases_shuff;
+data.test_colors = tests_shuff; 
+data.odd_one_out = odd_one_out_loc_shuff;
+
+%% keyboard information
+escapeKey = KbName('ESCAPE');
+oneKey = ONE_KEY;
+twoKey = TWO_KEY;
+threeKey = THREE_KEY;
+
+%% timing info
+presTimeFrames = round(PRES_TIME_SECS / ifi);
+
+%% DEFINE CROSS ------------------------------
 % Set up alpha-blending for smooth (anti-aliased) lines
 Screen('BlendFunction', window, 'GL_SRC_ALPHA', 'GL_ONE_MINUS_SRC_ALPHA');
 % Get the centre coordinate of the window
@@ -68,58 +153,91 @@ allCoords = [xCoords; yCoords];
 
 % Sync us and get a time stamp
 vbl = Screen('Flip', window);
+ 
+%% experimental loop for one subject and one session
+responses = zeros(length(stim_mtx), 1);
+for trial = 1:length(stim_mtx)
 
-% Animation loop
-angle = 0; % starting angle of square
-clockwise = true;
-while ~KbCheck
-    % draw cross TODO do we have to do this every time or can we keep it
-    % constant somehow   
-    % Draw the fixation cross in black, set it to the left of our screen (for right eye dominant) and
-    % set good quality antialiasing
+    if trial == 1
+        DrawFormattedText(window, 'Press any key to begin', 'center', 'center', black);
+        Screen('Flip', window);
+        KbStrokeWait;
+
+        % adapt 30 sec
+        Screen('FillRect', window, grey);
+        vbl = Screen('Flip', window);
+        WaitSecs('UntilTime', vbl + ADAPT_TIME);
+    end
+
+    % draw cross
     Screen('DrawLines', window, allCoords, LINE_WIDTH, black, [CROSS_POSX yCenter], 2);
+    vbl = Screen('Flip', window);
 
-    % With this basic way of drawing we have to translate each square from
-    % its screen position, to the coordinate [0 0], then rotate it, then
-    % move it back to its screen position.
-    % This is rather inefficient when drawing many rectangles at high
-    % refresh rates. But will work just fine for simple drawing tasks.
-    % For a much more efficient way of drawing rotated squares and rectangles
-    % have a look at the texture tutorials
-    % Get the current squares position and rotation angle
-    % Translate, rotate, re-tranlate and then draw our square
-    Screen('glPushMatrix', window)
-    Screen('glTranslate', window, STIM_POSX, pos_y)
-    Screen('glRotate', window, angle, 0, 0);
-    Screen('glTranslate', window, -STIM_POSX, -pos_y) 
-        
-    % draw the colors
-    Screen('FillRect', window, COLORS(1, :), CenterRectOnPoint(BASE_RECT, STIM_POSX - (RECT_WIDTH+GAP), pos_y));
-    Screen('FillRect', window, COLORS(2, :), CenterRectOnPoint(BASE_RECT, STIM_POSX, pos_y));
-    Screen('FillRect', window, COLORS(3, :), CenterRectOnPoint(BASE_RECT, STIM_POSX + (RECT_WIDTH+GAP), pos_y));
+    % now draw stimulus
+    angle = 0; % starting angle of square
+    clockwise = true;
+    for frame = 1:presTimeFrames
+        Screen('glPushMatrix', window)
+        Screen('glTranslate', window, STIM_POSX, pos_y)
+        Screen('glRotate', window, angle, 0, 0);
+        Screen('glTranslate', window, -STIM_POSX, -pos_y) 
+        % draw the colors
+        Screen('FillRect', window, stim_mtx(trial, :, 1), CenterRectOnPoint(BASE_RECT, STIM_POSX - (RECT_WIDTH+GAP), pos_y));
+        Screen('FillRect', window, stim_mtx(trial, :, 2), CenterRectOnPoint(BASE_RECT, STIM_POSX, pos_y));
+        Screen('FillRect', window, stim_mtx(trial, :, 3), CenterRectOnPoint(BASE_RECT, STIM_POSX + (RECT_WIDTH+GAP), pos_y));
+        Screen('glPopMatrix', window)
+%         vbl = Screen('Flip', window, vbl + ifi);
 
-    Screen('glPopMatrix', window)
+        if motion_shuff(trial) == 2 % 1 is static, 2 is moving
+            if angle >= 45
+                clockwise = false;
+                angle = angle - DEG_PER_FRAME;
+            elseif angle <= -45
+                clockwise = true;
+                angle = angle + DEG_PER_FRAME;
+            elseif clockwise == true
+               angle = angle + DEG_PER_FRAME;
+            else % clockwise = false
+                angle = angle - DEG_PER_FRAME;
+            end
+        end
 
-    % Flip to the screen
-    vbl = Screen('Flip', window, vbl + ifi);
+        % Draw the fixation point
+        Screen('DrawLines', window, allCoords, LINE_WIDTH, black, [CROSS_POSX yCenter], 2);
 
-    % create rotations
-    if ROTATE == true
-        if angle >= 45
-            clockwise = false;
-            angle = angle - DEG_PER_FRAME;
-        elseif angle <= -45
-            clockwise = true;
-            angle = angle + DEG_PER_FRAME;
-        elseif clockwise == true
-           angle = angle + DEG_PER_FRAME;
-        else % clockwise = false
-            angle = angle - DEG_PER_FRAME;
+        % Flip to the screen
+        vbl = Screen('Flip', window, vbl);
+    end
+    Screen('FillRect', window, grey);
+    Screen('Flip', window);
+
+    respToBeMade = true;
+    while respToBeMade
+        [keyIsDown,secs, keyCode] = KbCheck;
+        if keyCode(escapeKey)
+            ShowCursor;
+            sca;
+            return
+        elseif keyCode(oneKey)
+            response = 1;
+            respToBeMade = false;
+        elseif keyCode(twoKey)
+            response = 2;
+            respToBeMade = false;
+        elseif keyCode(threeKey)
+            response = 3;
+            respToBeMade = false;
         end
     end
 
-
+    % Record the response
+    responses(trial) = response;
 end
+
+% for all fields in the struct, each row is a trial and corresponds to the
+% same row number in all other fields
+data.responses = responses;
+save(['sub_' num2str(SUBJECT_ID,'%d') '_sess_' num2str(SESS_NUM,'%d') '_data.mat'], "data")
 
 % Clear the screen
 sca;
