@@ -88,11 +88,13 @@ base_green = exp_colors.base_green; % looks like [1 0 0]
 base_red = exp_colors.base_red;
 test_green = exp_colors.test_green; % looks like [r1 g1 b1; r2 g2 b2; r3 g3 b3]
 test_red = exp_colors.test_red;
-bases = [repmat(base_green, length(base_green), 1); repmat(base_red, length(base_red), 1)];
+% repeat bases same number of times as number of test colors
+bases = [repmat(base_green, length(test_green), 1); repmat(base_red, length(test_red), 1)];
 tests = [test_green; test_red];
 NUM_HUE_PAIRS = length(test_green) + length(test_red); % before position permutations
 
 % position permutations
+% each set of base-test pairs will have odd one out appearing in all 3 different positions
 bases = repmat(bases, 3, 1); % 3 positions
 tests = repmat(tests, 3, 1);
 odd_one_out_loc = [repmat(1, NUM_HUE_PAIRS, 1); repmat(2, NUM_HUE_PAIRS, 1); repmat(3, NUM_HUE_PAIRS, 1)];
@@ -105,13 +107,11 @@ odd_one_out_loc = repmat(odd_one_out_loc, 2, 1);
 
 % randomize order in the same way (same seed)
 rng(SUBJECT_ID)
-bases_shuff = bases(randperm(length(bases)), :);
-rng(SUBJECT_ID) 
-tests_shuff = tests(randperm(length(tests)), :);
-rng(SUBJECT_ID) 
-odd_one_out_loc_shuff = odd_one_out_loc(randperm(length(odd_one_out_loc)), :);
-rng(SUBJECT_ID) 
-motion_shuff = motion(randperm(length(motion)), :);
+perm = randperm(length(bases));
+bases_shuff = bases(perm, :);
+tests_shuff = tests(perm, :);
+odd_one_out_loc_shuff = odd_one_out_loc(perm, :);
+motion_shuff = motion(perm, :);
 
 % with 5 hue distances per color, length(stim_mtx) = 60
 stim_mtx = zeros(length(bases_shuff), 3, 3); % 3 colors (3 rectangles), 3 color values (rgb)
