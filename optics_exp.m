@@ -165,6 +165,7 @@ for trial = 1:length(stim_mtx)
 
         % adapt 30 sec
         Screen('FillRect', window, grey);
+        Screen('DrawLines', window, allCoords, LINE_WIDTH, black, [CROSS_POSX yCenter], 2);
         vbl = Screen('Flip', window);
         WaitSecs('UntilTime', vbl + ADAPT_TIME);
     end
