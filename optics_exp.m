@@ -105,9 +105,9 @@ tests = repmat(tests, 2, 1);
 motion = [repmat(1, length(odd_one_out_loc), 1); repmat(2, length(odd_one_out_loc), 1)];
 odd_one_out_loc = repmat(odd_one_out_loc, 2, 1);
 
-% randomize order in the same way (same seed)
-rng(SUBJECT_ID)
-perm = randperm(length(bases));
+% randomize order in the same way for all arrays in this session (same seed)
+seed = str2double(strcat([num2str(SUBJECT_ID) num2str(SESS_NUM)])); % random seed based on concatenating subject id and session number 
+rng(seed)
 bases_shuff = bases(perm, :);
 tests_shuff = tests(perm, :);
 odd_one_out_loc_shuff = odd_one_out_loc(perm, :);
