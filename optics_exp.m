@@ -108,6 +108,7 @@ odd_one_out_loc = repmat(odd_one_out_loc, 2, 1);
 % randomize order in the same way for all arrays in this session (same seed)
 seed = str2double(strcat([num2str(SUBJECT_ID) num2str(SESS_NUM)])); % random seed based on concatenating subject id and session number 
 rng(seed)
+perm = randperm(length(bases));
 bases_shuff = bases(perm, :);
 tests_shuff = tests(perm, :);
 odd_one_out_loc_shuff = odd_one_out_loc(perm, :);
