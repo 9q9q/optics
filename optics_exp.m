@@ -7,9 +7,9 @@
 
 %% setup
 % !!!!!!!!!!!!! for dev on mac: comment out when running on windows !!!!!!
-Screen('Preference','ConserveVRAM', 16384); % https://psychtoolbox.discourse.group/t/using-toolbox-with-big-sur-and-m1-macbook/3599
-Screen('Preference', 'SkipSyncTests', 1);
-Screen('Preference','Verbosity', 3);
+% Screen('Preference','ConserveVRAM', 16384); % https://psychtoolbox.discourse.group/t/using-toolbox-with-big-sur-and-m1-macbook/3599
+% Screen('Preference', 'SkipSyncTests', 1);
+% Screen('Preference','Verbosity', 3);
    
 % Clear the workspace and the screen
 sca;
@@ -33,13 +33,13 @@ LINE_WIDTH = 4; % for fixation cross
 CROSS_DIM = 20;
 
 % !!!!!!!!! MAY NEED TO CHANGE !!!!!!!!!! --------------------------------
-ADAPT_TIME = 1; % change this to 30 when actually running
-PRES_TIME_SECS = 1; % Presentation Time for stim in seconds 
+ADAPT_TIME = 30; % change this to 30 when actually running
+PRES_TIME_SECS = 3; % Presentation Time for stim in seconds 
 
-% these key mappings are for mac, may need to change for windows
-ONE_KEY = 30; % KbName('1'); may work on windows
-TWO_KEY = 31; % KbName('2'); may work on windows
-THREE_KEY = 32; % KbName('3'); may work on windows
+% these key mappings are specific to windows and maybe keyboard
+ONE_KEY = 49; % windows
+TWO_KEY = 50; % windows
+THREE_KEY = 51; % windows
 
 RECT_WIDTH = 3 * PIX_PER_CM;
 GAP = .5 * PIX_PER_CM; % gap between color rects
@@ -48,7 +48,8 @@ GAP = .5 * PIX_PER_CM; % gap between color rects
 % 45deg/75ms -> 0.6deg/ms -> 600deg/s
 % ifi = 0.0166943440000068s/frame
 % deg per frame = 600deg/s * 0.0166943440000068s/frame
-DEG_PER_FRAME = 10.0166; % determines speed
+% DEG_PER_FRAME = 10.0166; % determines speed
+DEG_PER_FRAME = 5.0083;
 CROSS_POSX = SCREEN_WIDTH_PIX/2; 
 STIM_POSX = (CROSS_POSX*CM_PER_PIX - 18) * PIX_PER_CM;
 % !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! --------------------------
@@ -104,7 +105,6 @@ bases = repmat(bases, 2, 1); % 2 motion conditions: moving and static
 tests = repmat(tests, 2, 1);
 motion = [repmat(1, length(odd_one_out_loc), 1); repmat(2, length(odd_one_out_loc), 1)];
 odd_one_out_loc = repmat(odd_one_out_loc, 2, 1);
-
 % randomize order in the same way for all arrays in this session (same seed)
 seed = str2double(strcat([num2str(SUBJECT_ID) num2str(SESS_NUM)])); % random seed based on concatenating subject id and session number 
 rng(seed)
